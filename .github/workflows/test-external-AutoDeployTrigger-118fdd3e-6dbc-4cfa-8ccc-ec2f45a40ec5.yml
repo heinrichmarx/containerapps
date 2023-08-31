@@ -1,0 +1,45 @@
+name: Trigger auto deployment for test-external
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ main ]
+    paths:
+    - '//**'
+    - '.github/workflows/test-external-AutoDeployTrigger-118fdd3e-6dbc-4cfa-8ccc-ec2f45a40ec5.yml'
+
+  # Allow mannually trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.TESTEXTERNAL_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.TESTEXTERNAL_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.TESTEXTERNAL_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ github.workspace }} 
+          registryUrl: hlmregistry.azurecr.io
+          registryUsername: ${{ secrets.TESTEXTERNAL_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.TESTEXTERNAL_REGISTRY_PASSWORD }}
+          containerAppName: test-external
+          resourceGroup: ContainerApps
+          imageToBuild: hlmregistry.azurecr.io/test-external:${{ github.sha }}
+          dockerfilePath: Dockerfile
+
+
